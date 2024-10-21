@@ -1,3 +1,4 @@
+from os import pardir
 import numpy as np
 import sys
 import numdifftools as nd
@@ -29,7 +30,7 @@ def submit_add():
 ##############################################################################
 ### TESTS/SUBMISSION CODE FOR parse_mnist()
 
-def test_parse_mnist():
+def test_parse_mnist_1():
     X,y = parse_mnist("data/train-images-idx3-ubyte.gz",
                       "data/train-labels-idx1-ubyte.gz")
     assert X.dtype == np.float32
@@ -43,6 +44,14 @@ def test_parse_mnist():
         w.r.t. the whole dataset, _not_ individual images.""", rtol=1e-6)
     np.testing.assert_equal(y[:10], [5, 0, 4, 1, 9, 2, 1, 3, 1, 4])
 
+def test_parse_mnist_2():
+  X,y = parse_mnist("data/t10k-images-idx3-ubyte.gz",
+                      "data/t10k-labels-idx1-ubyte.gz")
+  assert X.dtype == np.float32
+  assert y.dtype == np.uint8
+  assert X.shape == (10000,784)
+  assert y.shape == (10000,)
+  
 
 def submit_parse_mnist():
     X,y = parse_mnist("data/t10k-images-idx3-ubyte.gz",

@@ -20,7 +20,7 @@ def add(x, y):
         Sum of x + y
     """
     ### BEGIN YOUR CODE
-    pass
+    return x + y
     ### END YOUR CODE
 
 
@@ -48,7 +48,38 @@ def parse_mnist(image_filename, label_filename):
                 for MNIST will contain the values 0-9.
     """
     ### BEGIN YOUR CODE
-    pass
+    # 1. ungzip the file
+    with gzip.open(image_filename) as f:
+      magic_number = f.read(4)
+      N_images = struct.unpack(">i", f.read(4))[0]
+      row = struct.unpack(">i", f.read(4))[0]
+      col = struct.unpack(">i", f.read(4))[0]
+      print(f'N_images={N_images}, row={row}, col={col}')
+      X = []
+      for _ in range(N_images):
+        item = []
+        for _ in range(row):
+          for _ in range(col):
+            pixel = struct.unpack(">B", f.read(1))[0]
+            item.append(pixel)
+        X.append(item)
+    
+    with gzip.open(label_filename) as f:
+      magic_number = f.read(4)
+      N_labels = struct.unpack(">i", f.read(4))[0]
+      print(f'N_labels={N_labels}')
+      y = []
+      for _ in range(N_labels):
+        label = struct.unpack(">B", f.read(1))[0]
+        y.append(label)
+    
+    def norm(arr):
+      min_v = np.min(arr)
+      max_v = np.max(arr)
+      return (arr - min_v) / (max_v - min_v)
+    
+    X = np.array(X, dtype=np.float32) 
+    return norm(X), np.array(y, dtype=np.uint8)
     ### END YOUR CODE
 
 
@@ -68,7 +99,16 @@ def softmax_loss(Z, y):
         Average softmax loss over the sample.
     """
     ### BEGIN YOUR CODE
-    pass
+    return np.mean(
+          np.log(
+            np.sum(
+              np.exp(
+                Z - Z[np.arange(Z.shape[0]), y].reshape(-1, 1) # z_i - z_y
+              ),
+              axis=1
+            )
+          )
+        )
     ### END YOUR CODE
 
 
@@ -91,7 +131,41 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    # 1. partition all examples into batches
+    n = X.shape[0]
+    total_batch = []
+    batch_num = n // batch
+    i = 1
+    while i <= batch_num:
+      total_batch.append(
+        (
+          X[(i-1)*batch : i*batch],
+          y[(i-1)*batch : i*batch]
+        )
+      )
+      i += 1
+    if n % batch != 0:
+      total_batch.append(
+        (
+          X[(i-1)*batch:],
+          y[(i-1)*batch:]
+        )
+      )
+    # 2.begin to iterate the batches and update the theta
+    
+    def norm(arr):
+      arr = np.exp(arr)
+      return arr / np.sum(arr)
+
+    def calc_gradient(X, theta, y):
+      Z = np.apply_along_axis(norm, axis=1, arr=np.matmul(X, theta))
+      I = np.zeros(shape=Z.shape)
+      I[np.arange(Z.shape[0]),y] = 1
+      return np.matmul(np.transpose(X), Z-I) / Z.shape[0]
+
+    loss = 0.0
+    for one_batch in total_batch:
+      theta -= lr * calc_gradient(one_batch[0], theta, one_batch[1])
     ### END YOUR CODE
 
 
