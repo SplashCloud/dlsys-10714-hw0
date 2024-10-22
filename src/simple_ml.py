@@ -192,7 +192,44 @@ def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    n = X.shape[0]
+    batch_num = n // batch
+    total_data = []
+    i = 1
+    while i <= batch_num:
+      total_data.append(
+        (
+          X[(i-1)*batch : i*batch],
+          y[(i-1)*batch : i*batch]
+        )
+      )
+      i += 1
+    if n % batch != 0:
+      total_data.append(
+        (
+          X[(i-1)*batch : ],
+          y[(i-1)*batch : ]
+        )
+      )
+
+    def relu(arr):
+      return np.maximum(0, arr)
+
+    def norm(arr):
+      arr = np.exp(arr)
+      return arr / np.sum(arr)
+
+    for one_batch in total_data:
+      X0, y0 = one_batch
+      Z1 = relu(np.matmul(X0, W1))
+      Z2 = np.matmul(Z1, W2)
+      Iy = np.zeros(shape=Z2.shape)
+      Iy[np.arange(Iy.shape[0]),y0] = 1
+      G2 = np.apply_along_axis(norm, axis=1, arr=Z2) - Iy
+      G1 = np.where(Z1 > 0, 1, 0) * np.matmul(G2, np.transpose(W2))
+
+      W1 -= lr * np.matmul(np.transpose(X0), G1) / X0.shape[0]
+      W2 -= lr * np.matmul(np.transpose(Z1), G2) / X0.shape[0]
     ### END YOUR CODE
 
 
