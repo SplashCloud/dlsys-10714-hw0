@@ -5,6 +5,68 @@
 
 namespace py = pybind11;
 
+void matmul(const float *m1, const float *m2, float *res,
+        size_t p, size_t q, size_t t) {
+  // m1: (p x q)
+  // m2: (q x t)
+  // res: (p x t)
+  for (size_t i = 0; i < p; i++) {
+    for (size_t j = 0; j < t; j++) {
+      float ele = 0.0;
+      for (size_t u = 0; u < q; u++) {
+        ele += m1[i*q+u] * m2[u*t+j];
+      }
+      res[i*t+j] = ele;
+    }
+  }
+}
+
+void normalize(float *m, size_t p, size_t q) {
+  for (size_t i = 0; i < p; i++) {
+    float sum = 0.0;
+    for (size_t j = 0; j < q; j++) {
+      m[i*q+j] = exp(m[i*q+j]);
+      sum += m[i*q+j];
+    }
+    for (size_t j = 0; j < q; j++) {
+      m[i*q+j] /= sum;
+    }
+  }
+}
+
+void transpose(const float *m, float *res, size_t p, size_t q) {
+  for (size_t i = 0; i < q; i++) {
+    for (size_t j = 0; j < p; j++) {
+      res[i*p+j] = m[j*q+i];
+    }
+  }
+}
+
+void minus(float *a, const float *b, size_t p, size_t q) {
+  for (size_t i = 0; i < p; i++) {
+    for (size_t j = 0; j < q; j++) {
+      a[i*q+j] -= b[i*q+j];
+    }
+  }
+}
+
+void multiple(float *a, const float alpha, size_t p, size_t q) {
+  for (size_t i = 0; i < p; i++) {
+    for (size_t j = 0; j < q; j++) {
+      a[i*q+j] *= alpha;
+    }
+  }
+}
+
+void PrintMatrix(const float *m, size_t p, size_t q) {
+  std::cout << "matrix(" << p << " x " << q << ")" << std::endl;
+  for (size_t i = 0; i < p; i++) {
+      for (size_t j = 0; j < q; j++) {
+          std::cout << "\t" << m[i*q+j] << ", ";
+      }
+      std::cout << std::endl;
+  }
+}
 
 void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
 								  float *theta, size_t m, size_t n, size_t k,
@@ -33,7 +95,56 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
      */
 
     /// BEGIN YOUR CODE
+    size_t total = m;
+    size_t itr = 1;
+    while (total > 0) {
+      size_t p = batch;
+      if (total >= batch) {
+        total -= batch;
+      } else {
+        p = total;
+        total = 0;
+      }
+      float *X0 = new float[p * n]; // (p x n)
+      unsigned char *y0 = new unsigned char[p]; // (p)
+      size_t offset = (itr-1)*batch;
+      size_t end = itr*batch > m ? m : itr*batch;
+      for (size_t i = offset; i < end; i++) {
+        for (size_t j = 0; j < n; j++) {
+          X0[(i-offset)*n+j] = X[i*n+j];
+        }
+        y0[i-offset] = y[i];
+      }
+      // Z = X0 * theta
+      float *Z = new float[p * k];
+      matmul(X0, theta, Z, p, n, k);
+      // normalize Z
+      normalize(Z, p, k);
+      // Z - I
+      float *I = new float[p * k]{0.0};
+      for (size_t i = 0; i < p; i++) {
+        I[i*k+y0[i]] = 1;
+      }
+      minus(Z, I, p, k);
+      // transpose X
+      float *X0_T = new float[n * p];
+      transpose(X0, X0_T, p, n);
+      // matmul
+      float *result = new float[n * k];
+      matmul(X0_T, Z, result, n, p, k);
+      // update
+      multiple(result, lr / p, n, k);
+      minus(theta, result, n, k);
 
+      delete [] X0;
+      delete [] y0;
+      delete [] Z;
+      delete [] I;
+      delete [] X0_T;
+      delete [] result;
+
+      itr += 1;
+    }
     /// END YOUR CODE
 }
 
